@@ -1,2 +1,116 @@
 # OpenCilk Autolab Autograder Guide
 A repo dedicated to providing a Guide for configuring Autolab for autograding Cilk Programs
+
+# Setting up OpenCilk Autograder for Autolab
+
+Hello everyone, I created this guide to provide step-by-step instructions for setting up an OpenCilk autograding backend for Autolab. It is designed to help instructors teaching Software Performance Engineering and related courses easily autograde students' Cilk programs and manage their classroom.
+
+The guide covers the complete setup process: installing Autolab using the official documentation, configuring the autograding Docker container with OpenCilk support, and creating your first Cilk assessment.
+
+## Autolab Setup
+
+### Docker Compose Install (Recommended)
+
+For Setting up Autolab itself I recommend following the official Autolab Docker Compose setup that can be found here -> [Autolab](https://docs.autolabproject.com/installation/docker-compose/)
+
+**Important Note:** Follow all the step from step 1 to step 13 until you finish setting up TLS or decide not to set up TLS for testing purposes. I'll go over setting up the Tango autograding image seperately.
+
+
+This will go over Autolab + Tango Docker Compose Installation. The is a straightforward guide to setup Autolab in a Virtual Machine and Setting up Nginx within autolab to host the frontend of Autolab in your own Domain.
+
+Once you have set everything up until step 13, simply run ```$ docker compose up -d``` to run the frontend and verify you can correctly access the website from your Domain.
+
+### Setting up Tango
+
+The updated Autograding Dockerfile can be found here: [Dockerfile](https://github.com/autolab/Tango/blob/2e591c25371e64550f916c795e3094ae2a963761/vmms/Dockerfile)
+
+Simply replace autolab-docker/Tango/vmms/Dockerfile with the dockerfile in in the link above. This is the Dockerfile image thats going to build the OpenCilk Autograding Image.
+
+Then run the following commands to build the autograding image:  
+```$ cd /<path-to-docker-compose-installation>```  
+```$ docker build -t autograding_image Tango/vmms/```
+
+ Now everything should be setup to run OpenCilk Autograding backend with Autolab. Start everything up if not already: ```$ docker compose up -d```
+
+## Making your First OpenCilk Assessment
+
+First I'll provide a sample OpenCilk Assessment and the files you need to set the assignment up. This was you can also test to make sure Opencilk autograding backend if fully functional on your end. Then I'll explain each sample files and what they are doing so you could make your own OpenCilk Assessment
+
+### Setting up OpenCilk Fib Assessment
+
+#### Git Clone:
+cd into a directory where you would like to store the sample assessment. This can be anywhere from which your accessing the Autolab Frontend website (not the virtual server autolab backend is running on)
+
+Then clone this repo by running the following command:  
+```$ git clone https://github.com/araiyan/Autolab-OpenCilk-Assessments.git```
+
+#### Create Autolab Assessment:
+
+1. Login to Autolab from your Domain
+2. Click on **Manage Autolab** at the Top Right
+   - **Create New Course**
+   - Give your course a name, semester and input the instructor email
+   - Then click **Create Course**
+3. You should not have a course in the main page. Click on your course page
+   - Click on the **AUTOLAB** logo at the top left
+   - From Courses section click on the recently created course
+4. Click on **Install Assessment**
+   - Were using the first option, **Create New Assessment** under Create from scratch
+5. Configure the assessment
+   - Name it Fib Lab
+   - Create a new category, (Cilk Assessment)
+   - keep the rest of the configuration the same and hit **Create Assessment**
+6. Now from the Assessment page click on **Edit assessment** under Admin Options
+7. Configure the Autograder
+   - At the bottom of the basic page look at under Modules Used and click on the plus symbol next to **Autograder**
+   - Make sure under VM image it says autograding_image. This is the same openCilk Autograding image we had built earlier
+   - Under Autograder Makefile click **Choose File**
+     - Now move to the directory in which you had initially cloned Autolab-OpenCilk-Assessments
+     - Go inside the Fib directory then choose the **autograde-Makefile**
+   - Now under Autograder Tar click **Choose File**
+     - Go back to the same direcotry and choose **autograde.tar**
+   - Now Click **Save Settings** to save the current autograder configuration
+   - Then go back to the Edit Assessments page by clicking on **Edit Assessment** at the top left corner on the left of Autograder Settings tab
+8. Configure Handin
+   - Click on the **Handin** Tab
+   - Under Handin filename name the handin file **fib.c** (This is the file we want students to submit)
+9. Now lets configure the scoring 
+   - Click on the **Problems** Tab
+   - Click **Add Problem**
+     - Name it **Correctness** (This is the same name our driver.sh looks for inside the autograder)
+     - set Max score to be 100
+     - The click **Save Problem**
+
+Everything should be setup now, lets test out our system
+
+#### Testing the OpenCilk Assessment
+1. Click on the Assignment name at the top left corner for the page on the left of Edit Assessment
+2. From this Assessment page click on the submission box
+3. Now navigate back to the Autolab-OpenCilk-Assessments/Fib directory
+4. Choose the file named fib.c (This is the correct implementation of the assessment)
+5. Click on *I affirm that I have compiled...*
+6. Hit **Submit**
+7. After 1 second click on **View Source**
+    - You should be able to see the Autograder output now and see grades at the middle right side of your screen
+8. It should say Correctness 100/100 under the Grades tab
+
+## Making Custom OpenCilk Assessments
+
+To create custom OpenCilk Assessments for Autolab, first consult the comprehensive guide on building Autolab Assessments in the official documentation -> [Guide for Lab Authors](https://docs.autolabproject.com/lab/)
+
+I'll now give short summaries of a few important files to keep in mind when creating an Autolab OpenCilk Assessment
+
+### autograde.tar
+
+This is the grading environment for testing the students submission. This can include:
+ - an empty c file that will be later replaced by students submission
+ - driver.sh which will grade the students submission
+ - Makefile which contains the code to build the student's submitted cilk program using opencilk/bin/clang
+
+### autograde-Makefile
+
+This is the file first Makefile Tango launches up when a students submit their job to Autolab. The make file unzips our assessment environment then copies student's submitted CilkFile inside our grading directory and runs driver.sh which is the main grading shell script that will assess students submission
+
+### driver.sh
+
+This is the main grading shell script that compiles the student's Cilk program and runs it through test cases. It evaluates the program's correctness by comparing actual output against expected results. The script can be customized to test multiple scenarios and inputs depending on the specific requirements of the Cilk program being assessed. It outputs scores for each problem (e.g., "Correctness") that Autolab uses to calculate the final grade.
