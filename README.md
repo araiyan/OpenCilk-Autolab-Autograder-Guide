@@ -114,3 +114,41 @@ This is the file first Makefile Tango launches up when a students submit their j
 ### driver.sh
 
 This is the main grading shell script that compiles the student's Cilk program and runs it through test cases. It evaluates the program's correctness by comparing actual output against expected results. The script can be customized to test multiple scenarios and inputs depending on the specific requirements of the Cilk program being assessed. It outputs scores for each problem (e.g., "Correctness") that Autolab uses to calculate the final grade.
+
+# Setting up Stampede3 Auto Assessment Submission
+If you would rather have your assessments be graded inside an HPC machine for performance analysis, please do the following in order, to correctly setup Stampede3 inside of Texas Advanced Computing Center to accept Cilk FORK Job submissions.
+
+First, if you don't have a TACC account yet, follow [this guide](./Tapis_Stampede_Registration/GETTING_TACC.md) to create one.
+
+Next, you'll need to install and configure OpenCilk in your Stampede3 work directory to support Cilk program compilation and execution. Detailed setup instructions are provided in [Install OpenCilk to Stampede](./Tapis_Stampede_Registration/INSTALL_OPENCILK_STAMPEDE.md).
+
+Finally, once you've completed the TACC account setup and OpenCilk installation, follow the [TAPIS registration instructions](./Tapis_Stampede_Registration/README.md) to configure TAPIS as your orchestration layer. This enables automatic submission and execution of Cilk jobs through your autograder.
+
+## Testing Stampede3 Setup
+
+Once you have setup your Stampede3 node with Tapis to recieve Fork job submission, run the following to test whethere your setup is fully functional
+
+### For Windows:
+
+```bash
+$env:TAPIS_USERNAME='your_username'; $env:TAPIS_PASSWORD='your_password'; $env:TAPIS_APP_VERSION='1.0.1'; $env:TAPIS_RUNNER_SCRIPT='tapis_run_fib.sh'; $env:TAPIS_REQUIRE_OPENCILK_CC='1';
+bash ./local-submit.sh
+```
+
+### For Linux/bash:
+
+```bash
+TAPIS_USERNAME='your_username' TAPIS_PASSWORD='your_password' TAPIS_APP_VERSION='1.0.1' TAPIS_RUNNER_SCRIPT='tapis_run_fib.sh' python register_fork_app.py
+```
+### Then run local submission:
+
+```bash
+bash ./local-submit.sh
+```
+
+### Or with custom settings:
+```bash
+TAPIS_APP_ID='fibonacci-fork-app' TAPIS_APP_VERSION='1.0.1' FIB_INPUT='20' bash ./local-submit.sh
+```
+
+

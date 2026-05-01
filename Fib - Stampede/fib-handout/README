@@ -1,0 +1,40 @@
+For this lab, you should write a C program in fib.c that prints output
+in this format when run with argument 20:
+
+fib(20)=<number>
+
+To test your work locally:
+linux> make clean; make; ./fib 20
+
+To test the full submission pipeline from the repository root (before moving to Autolab):
+linux> ./local-submit.sh
+
+Autolab workflow:
+1. driver.sh base64-encodes fib.c and submits a Tapis job.
+2. The configured Tapis app compiles and runs ./fib 20.
+3. driver.sh polls Tapis for completion and scores from job logs.
+
+Required environment variables for Autolab:
+- TAPIS_ACCESS_TOKEN: Bearer token for Tapis API.
+- TAPIS_APP_ID: Tapis app id used to execute the grading job.
+
+Optional environment variables:
+- TAPIS_BASE_URL (default: https://tacc.tapis.io)
+- TAPIS_APP_VERSION (if your app uses explicit version selection)
+- TAPIS_JOB_TIMEOUT_SECONDS (default: 300)
+- TAPIS_POLL_INTERVAL_SECONDS (default: 5)
+- STAMPEDE_PARTITION (forwarded to the app as env var, optional)
+- STAMPEDE_ACCOUNT (forwarded to the app as env var, optional)
+
+Tapis app contract:
+- The app must read FIB_SOURCE_B64 and FIB_INPUT from environment variables.
+- The app must decode FIB_SOURCE_B64 to fib.c, compile, run ./fib $FIB_INPUT.
+- The app must print these lines in logs:
+	fib_output=fib(20)=<number>
+	elapsed=<seconds>
+
+Files:
+README          This file
+Makefile        Compiles fib.c
+driver.sh       Autolab autograder
+fib.c           Program that you will edit
