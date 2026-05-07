@@ -45,8 +45,12 @@ def main() -> int:
     )
     remote_bundle_name = f"{app_id}-{app_version}.tar"
     remote_bundle_path = f"{remote_bundle_dir.rstrip('/')}/{remote_bundle_name}"
-    # For FORK jobs with ZIP runtime, just use the script name, not a full container image path
-    remote_container_image = "tapisjob_app.sh"
+    # For FORK jobs with ZIP runtime, containerImage must point to the tar bundle file
+    # The path must be absolute (start with /) for TAPIS to accept it
+    bundle_path_abs = remote_bundle_path
+    if not bundle_path_abs.startswith('/'):
+        bundle_path_abs = '/' + bundle_path_abs
+    remote_container_image = bundle_path_abs
 
     t = Tapis(base_url=tenant_url, username=username, password=password)
     t.get_tokens()
@@ -73,7 +77,7 @@ def main() -> int:
 
         with bundle_tar.open("rb") as fh:
             t.files.insert(systemId=exec_system_id, path=remote_bundle_path, file=fh)
-        print(f"Uploaded ZIP runtime bundle to {remote_container_image}")
+        print(f"Uploaded ZIP runtime bundle to {remote_bundle_path}")
 
     app_def = {
         "id": app_id,
