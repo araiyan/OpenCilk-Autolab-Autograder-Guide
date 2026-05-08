@@ -82,9 +82,7 @@ fetch_tapis_access_token() {
 
     script_dir="$SCRIPT_DIR"
 
-    if [ -f "$./get-tapis-token.py" ]; then
-        token_helper="$./get-tapis-token.py"
-    elif [ -f "${script_dir}/get-tapis-token.py" ]; then
+    if [ -f "${script_dir}/get-tapis-token.py" ]; then
         token_helper="${script_dir}/get-tapis-token.py"
     fi
 

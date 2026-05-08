@@ -1,9 +1,0 @@
-To access the system:
-
-1) If not using ssh-keys, please enter your TACC password at the password prompt
-2) At the TACC Token prompt, enter your 6-digit code followed by <return>.
-
-If you are facing issues logging in, please use our login wizard at
-https://accounts.tacc.utexas.edu/login_support to troubleshoot.
-
-araiyan@login1.stampede3.tacc.utexas.edu: Permission denied (keyboard-interactive).
