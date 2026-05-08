@@ -8,6 +8,15 @@
 
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+DOTENV_FILE="${SCRIPT_DIR}/.env"
+
+if [ -f "$DOTENV_FILE" ]; then
+    set -a
+    . "$DOTENV_FILE"
+    set +a
+fi
+
 # Uses: score = 100 / (1 + elapsed_time)
 calculate_performance_score() {
     local elapsed=$1
@@ -34,6 +43,140 @@ have_command() {
     command -v "$1" >/dev/null 2>&1
 }
 
+detect_python_bin() {
+    local windows_python="/mnt/c/Users/Raiya/AppData/Local/Programs/Python/Python313/python.exe"
+
+    if [ -x "$windows_python" ]; then
+        echo "$windows_python"
+        return 0
+    fi
+
+    if have_command py; then
+        echo "py"
+        return 0
+    fi
+
+    if have_command python; then
+        echo "python"
+        return 0
+    fi
+
+    if have_command python3; then
+        echo "python3"
+        return 0
+    fi
+
+    return 1
+}
+
+fetch_tapis_access_token() {
+    local script_dir
+    local token_out=""
+    local rc=1
+    local pybin=""
+    local token_helper=""
+
+    script_dir="$SCRIPT_DIR"
+
+    if [ -f "$./get-tapis-token.py" ]; then
+        token_helper="$./get-tapis-token.py"
+    elif [ -f "${script_dir}/get-tapis-token.py" ]; then
+        token_helper="${script_dir}/get-tapis-token.py"
+    fi
+
+    pybin=$(detect_python_bin || true)
+
+    if [ -z "$pybin" ]; then
+        pybin=""
+    fi
+
+    if [ -n "$token_helper" ] && [ -n "$pybin" ] && [ -n "${TAPIS_USERNAME:-}" ] && [ -n "${TAPIS_PASSWORD:-}" ]; then
+        token_helper_arg="$token_helper"
+        set +e
+        token_out=$("$pybin" "$token_helper_arg" 2>&1)
+        rc=$?
+        set -e
+
+        if [ $rc -eq 0 ]; then
+            TAPIS_ACCESS_TOKEN=$(echo "$token_out" | awk -F': ' '/^access_token:/ {print $2; exit}' | tr -d '\r')
+            if [ -n "${TAPIS_ACCESS_TOKEN}" ]; then
+                export TAPIS_ACCESS_TOKEN
+                echo "Successfully fetched token via tapipy"
+                return 0
+            fi
+        fi
+    fi
+
+    if [ $rc -ne 0 ] && [ -n "$token_out" ]; then
+        echo "$token_out"
+    fi
+
+    if command -v tapis >/dev/null 2>&1; then
+        echo "Trying tapis CLI..."
+        set +e
+        TAPIS_ACCESS_TOKEN=$(tapis tokens create --quiet 2>/dev/null || true)
+        rc=$?
+        set -e
+        if [ $rc -eq 0 ] && [ -n "${TAPIS_ACCESS_TOKEN}" ]; then
+            export TAPIS_ACCESS_TOKEN
+            echo "Successfully fetched token via tapis CLI"
+            return 0
+        fi
+    fi
+
+    if [ -n "$pybin" ] && [ -n "${TAPIS_USERNAME:-}" ] && [ -n "${TAPIS_PASSWORD:-}" ]; then
+        set +e
+        TAPIS_ACCESS_TOKEN=$(TAPIS_BASE_URL="$TAPIS_BASE_URL" TAPIS_USERNAME="$TAPIS_USERNAME" TAPIS_PASSWORD="$TAPIS_PASSWORD" "$pybin" - <<'PY'
+import os
+import subprocess
+import sys
+
+try:
+    from tapipy.tapis import Tapis
+except ImportError:
+    print("Error: tapipy not installed. Install with: pip install tapipy", file=sys.stderr)
+    print("Attempting to install tapipy...", file=sys.stderr)
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "tapipy", "-q"])
+        from tapipy.tapis import Tapis
+        print("Successfully installed tapipy", file=sys.stderr)
+    except Exception as install_err:
+        print(f"Failed to auto-install tapipy: {install_err}", file=sys.stderr)
+        raise SystemExit(1)
+
+tenant_url = os.environ.get("TAPIS_BASE_URL", "https://tacc.tapis.io")
+username = os.environ.get("TAPIS_USERNAME", "").strip()
+password = os.environ.get("TAPIS_PASSWORD", "").strip()
+
+if not username or not password:
+    print("Error: Username and password are required", file=sys.stderr)
+    raise SystemExit(1)
+
+try:
+    t = Tapis(base_url=tenant_url, username=username, password=password)
+    t.get_tokens()
+    print(t.access_token.access_token)
+except Exception as exc:
+    print(f"Error: Authentication failed: {exc}", file=sys.stderr)
+    raise SystemExit(1)
+PY
+)
+        rc=$?
+        set -e
+        if [ $rc -eq 0 ] && [ -n "${TAPIS_ACCESS_TOKEN}" ]; then
+            export TAPIS_ACCESS_TOKEN
+            echo "Successfully fetched token via tapipy"
+            return 0
+        fi
+    fi
+
+    if [ -n "${TAPIS_ACCESS_TOKEN:-}" ]; then
+        return 0
+    fi
+
+    return 1
+}
+
 require_command curl
 require_command awk
 require_command base64
@@ -45,20 +188,20 @@ PYTHON_BIN=""
 
 if have_command jq; then
     JSON_ENGINE="jq"
+elif have_command python || have_command py; then
+    JSON_ENGINE="python"
+    PYTHON_BIN=$(detect_python_bin || true)
 elif have_command python3; then
     JSON_ENGINE="python"
     PYTHON_BIN="python3"
-elif have_command python; then
-    JSON_ENGINE="python"
-    PYTHON_BIN="python"
 else
     fail_with_zero_scores "Need either 'jq' or 'python3/python' for JSON handling"
 fi
 
 TAPIS_BASE_URL=${TAPIS_BASE_URL:-https://tacc.tapis.io}
-TAPIS_ACCESS_TOKEN=${TAPIS_ACCESS_TOKEN:-eyJhbGciOiJSUzI1NiIsImtpZCI6IjItMVR4SjR3NzVwS2xheE4zWk9zUFhSeV9MM3lIWUJXekJXNWQ1MWRyaWsiLCJ0eXAiOiJKV1QifQ.eyJqdGkiOiJmZTljZjg2Zi0wNGRiLTQ2ZDAtODIxMy1iMmRiZjJlZTMyNzUiLCJpc3MiOiJodHRwczovL3RhY2MudGFwaXMuaW8vdjMvdG9rZW5zIiwic3ViIjoiYXJhaXlhbkB0YWNjIiwidGFwaXMvdGVuYW50X2lkIjoidGFjYyIsInRhcGlzL3Rva2VuX3R5cGUiOiJhY2Nlc3MiLCJ0YXBpcy9kZWxlZ2F0aW9uIjpmYWxzZSwidGFwaXMvZGVsZWdhdGlvbl9zdWIiOm51bGwsInRhcGlzL3VzZXJuYW1lIjoiYXJhaXlhbiIsInRhcGlzL2FjY291bnRfdHlwZSI6InVzZXIiLCJleHAiOjE3NzYzOTI0MTMsInRhcGlzL2NsaWVudF9pZCI6bnVsbCwidGFwaXMvZ3JhbnRfdHlwZSI6InBhc3N3b3JkIn0.E5UAr7W22i70YnqdIzxSc_ymiKZOb5aafqEZFtngBL7OLswPvWodCNc9b6iqj1Hjw1EV7m-nEoV0Ef2tCYR_C-4guUWtXtnPt3PE_V6AmbA-mzrKghBQJquY6VJbhXKbxJCZNd_RkPqXIWSsbkf50TeFdmWbRBTFxTNFu2lYrBUjmDGov7aLiXAUQE5-7DxYJsJpF_fT7lbVd4k_ZSpXcmBH1jA7cWckEfRLg0InGFcjQKQlOmf4szbIvf4jnWaCsK_MSxRDITWTSKA5gaGrRfZmi5O14YOsRn0apu2px6PEBKkkXCBePKKJZsd5mFhYzzp-AAjO66rzoh3jNeWt9w}
-TAPIS_APP_ID=${TAPIS_APP_ID:-}
-TAPIS_APP_VERSION=${TAPIS_APP_VERSION:-}
+TAPIS_ACCESS_TOKEN=${TAPIS_ACCESS_TOKEN:-}
+TAPIS_APP_ID=${TAPIS_APP_ID:-fibonacci-fork-app}
+TAPIS_APP_VERSION=${TAPIS_APP_VERSION:-1.0.1}
 TAPIS_JOB_TIMEOUT_SECONDS=${TAPIS_JOB_TIMEOUT_SECONDS:-300}
 TAPIS_POLL_INTERVAL_SECONDS=${TAPIS_POLL_INTERVAL_SECONDS:-5}
 FIB_INPUT=${FIB_INPUT:-20}
@@ -66,12 +209,10 @@ FIB_INPUT=${FIB_INPUT:-20}
 STAMPEDE_PARTITION=${STAMPEDE_PARTITION:-}
 STAMPEDE_ACCOUNT=${STAMPEDE_ACCOUNT:-}
 
-if [ -z "$TAPIS_ACCESS_TOKEN" ]; then
-    fail_with_zero_scores "Set TAPIS_ACCESS_TOKEN for Tapis API authentication"
-fi
+export TAPIS_BASE_URL TAPIS_ACCESS_TOKEN TAPIS_APP_ID TAPIS_APP_VERSION TAPIS_JOB_TIMEOUT_SECONDS TAPIS_POLL_INTERVAL_SECONDS FIB_INPUT STAMPEDE_PARTITION STAMPEDE_ACCOUNT
 
-if [ -z "$TAPIS_APP_ID" ]; then
-    fail_with_zero_scores "Set TAPIS_APP_ID to your Tapis app id"
+if ! fetch_tapis_access_token; then
+    fail_with_zero_scores "Set TAPIS_ACCESS_TOKEN or TAPIS_USERNAME/TAPIS_PASSWORD for Tapis API authentication"
 fi
 
 if [ ! -f "fib.c" ]; then
