@@ -17,6 +17,10 @@ if [ -f "$DOTENV_FILE" ]; then
     set +a
 fi
 
+strip_carriage_returns() {
+    printf '%s' "$1" | tr -d '\r'
+}
+
 # Uses: score = 100 / (1 + elapsed_time)
 calculate_performance_score() {
     local elapsed=$1
@@ -208,6 +212,16 @@ FIB_INPUT=${FIB_INPUT:-20}
 
 STAMPEDE_PARTITION=${STAMPEDE_PARTITION:-}
 STAMPEDE_ACCOUNT=${STAMPEDE_ACCOUNT:-}
+
+TAPIS_BASE_URL=$(strip_carriage_returns "$TAPIS_BASE_URL")
+TAPIS_ACCESS_TOKEN=$(strip_carriage_returns "$TAPIS_ACCESS_TOKEN")
+TAPIS_APP_ID=$(strip_carriage_returns "$TAPIS_APP_ID")
+TAPIS_APP_VERSION=$(strip_carriage_returns "$TAPIS_APP_VERSION")
+TAPIS_JOB_TIMEOUT_SECONDS=$(strip_carriage_returns "$TAPIS_JOB_TIMEOUT_SECONDS")
+TAPIS_POLL_INTERVAL_SECONDS=$(strip_carriage_returns "$TAPIS_POLL_INTERVAL_SECONDS")
+FIB_INPUT=$(strip_carriage_returns "$FIB_INPUT")
+STAMPEDE_PARTITION=$(strip_carriage_returns "$STAMPEDE_PARTITION")
+STAMPEDE_ACCOUNT=$(strip_carriage_returns "$STAMPEDE_ACCOUNT")
 
 export TAPIS_BASE_URL TAPIS_ACCESS_TOKEN TAPIS_APP_ID TAPIS_APP_VERSION TAPIS_JOB_TIMEOUT_SECONDS TAPIS_POLL_INTERVAL_SECONDS FIB_INPUT STAMPEDE_PARTITION STAMPEDE_ACCOUNT
 

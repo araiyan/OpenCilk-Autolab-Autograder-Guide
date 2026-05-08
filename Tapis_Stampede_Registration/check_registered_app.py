@@ -8,9 +8,6 @@ for app in apps:
     exec_system = getattr(getattr(app, "jobAttributes", None), "execSystemId", getattr(app, "execSystemId", "N/A"))
     print(f"ID: {app.id} | Version: {app.version} | ExecSystem: {exec_system}")
 
-t = Tapis(base_url="https://tacc.tapis.io", username="your_username", password="your password")
-t.get_tokens()
-
 # 2. Corrected App Definition
 # Note: In Tapis V3, "jobAttributes" is the container for Slurm-specific defaults
 app_def = {
