@@ -28,7 +28,7 @@ Once you have set everything up until step 13, simply run ```$ docker compose up
 
 ### Setting up Tango
 
-The updated Autograding Dockerfile can be found here: [Dockerfile](https://github.com/autolab/Tango/blob/2e591c25371e64550f916c795e3094ae2a963761/vmms/Dockerfile)
+The updated Autograding Dockerfile can be found here: [Dockerfile](https://github.com/araiyan/OpenCilk-Autolab-Autograder-Guide/blob/main/Dockerfile)
 
 Simply replace autolab-docker/Tango/vmms/Dockerfile with the dockerfile in in the link above. This is the Dockerfile image thats going to build the OpenCilk Autograding Image.
 
