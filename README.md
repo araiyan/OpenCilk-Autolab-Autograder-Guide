@@ -7,23 +7,6 @@ theme: minima
 # OpenCilk Autolab Autograder Guide
 A repo dedicated to providing a Guide for configuring Autolab for autograding Cilk Programs
 
-## Jekyll site setup
-
-This repository now includes the minimal files needed for GitHub Pages / Jekyll:
-
-- `_config.yml` for the site metadata and theme
-- `Gemfile` for local builds with Bundler
-- YAML front matter at the top of this `README.md` so GitHub Pages can render it as the home page
-
-To preview the site locally, install Ruby, Bundler, and Jekyll, then run:
-
-```bash
-bundle install
-bundle exec jekyll serve
-```
-
-After that, open `http://127.0.0.1:4000` in your browser.
-
 # Setting up OpenCilk Autograder for Autolab
 
 Hello everyone, I created this guide to provide step-by-step instructions for setting up an OpenCilk autograding backend for Autolab. It is designed to help instructors teaching Software Performance Engineering and related courses easily autograde students' Cilk programs and manage their classroom.
