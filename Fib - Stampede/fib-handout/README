@@ -1,40 +1,81 @@
-For this lab, you should write a C program in fib.c that prints output
-in this format when run with argument 20:
+For this lab, write a C program in `fib.c` that prints the following
+when run with argument `20`:
 
 fib(20)=<number>
 
-To test your work locally:
+Local test:
+
 linux> make clean; make; ./fib 20
 
-To test the full submission pipeline from the repository root (before moving to Autolab):
+Full submission pipeline (from repository root):
+
 linux> ./local-submit.sh
 
-Autolab workflow:
-1. driver.sh base64-encodes fib.c and submits a Tapis job.
-2. The configured Tapis app compiles and runs ./fib 20.
-3. driver.sh polls Tapis for completion and scores from job logs.
+Overview
+ - The grading pipeline encodes your `fib.c`, submits a job to Tapis
+	 (Stampede), waits for completion, retrieves the job logs, and
+	 computes scores from the job output.
 
-Required environment variables for Autolab:
-- TAPIS_ACCESS_TOKEN: Bearer token for Tapis API.
-- TAPIS_APP_ID: Tapis app id used to execute the grading job.
+Key scripts
+ - `driver.sh`: Thin Autolab/Tapis grader wrapper. Loads an optional
+	 `.env`, sources `tapis.sh` and `assignment.sh`, then invokes
+	 `assignment_main`. It is the top-level entrypoint used by Autolab.
 
-Optional environment variables:
-- TAPIS_BASE_URL (default: https://tacc.tapis.io)
-- TAPIS_APP_VERSION (if your app uses explicit version selection)
-- TAPIS_JOB_TIMEOUT_SECONDS (default: 300)
-- TAPIS_POLL_INTERVAL_SECONDS (default: 5)
-- STAMPEDE_PARTITION (forwarded to the app as env var, optional)
-- STAMPEDE_ACCOUNT (forwarded to the app as env var, optional)
+ - `assignment.sh`: Assignment-specific grading logic. Responsibilities:
+	 - Validate environment and required commands (`curl`, `awk`,
+		 `base64`, `grep`, `sed`, and a JSON engine `jq` or Python).
+	 - Base64-encode `fib.c` and build a Tapis job submission payload.
+	 - Submit the job via the Tapis API, poll for status, and fetch
+		 logs. If the job fails or times out it emits zero scores.
+	 - Parse `fib_output=` and `elapsed=` from the job logs and print a
+		 JSON scores object: `{"scores": {"Correctness": X,
+		 "Performance": Y}}`.
 
-Tapis app contract:
-- The app must read FIB_SOURCE_B64 and FIB_INPUT from environment variables.
-- The app must decode FIB_SOURCE_B64 to fib.c, compile, run ./fib $FIB_INPUT.
-- The app must print these lines in logs:
-	fib_output=fib(20)=<number>
-	elapsed=<seconds>
+ - `run_fib.slurm`: Script executed on Stampede by the Tapis app.
+	 - Decodes `FIB_SOURCE_B64` to `fib.c`.
+	 - Attempts to compile with `$WORK/opencilk/bin/clang` (preferred),
+		 then `clang`, falling back to `gcc` if needed.
+	 - Runs `./fib $FIB_INPUT`, measures elapsed time, and prints two
+		 lines to stdout:
+			 - `fib_output=<your program output>` (e.g. `fib(20)=...`)
+			 - `elapsed=<seconds>`
+	 - Cleans build artifacts before exit so the archived output stays
+		 small and quick to download.
 
-Files:
-README          This file
-Makefile        Compiles fib.c
-driver.sh       Autolab autograder
-fib.c           Program that you will edit
+ - `tapis.sh`: Tapis API helper functions. Responsibilities:
+	 - Detects available JSON engine (`jq` or Python) and a Python
+		 interpreter.
+	 - Fetches or constructs a `TAPIS_ACCESS_TOKEN` (via helper
+		 scripts, the `tapis` CLI, or inline `tapipy`).
+	 - Provides `tapis_api_call_json` (authenticated curl wrapper),
+		 helpers to extract job id/status/logs, and a downloader for job
+		 stdout archives.
+
+Environment variables
+ - Required (for Autolab / driver.sh):
+	 - `TAPIS_ACCESS_TOKEN` (or supply credentials so `tapis.sh` can
+		 fetch one).
+	 - `TAPIS_APP_ID` (the Tapis app that runs `run_fib.slurm`).
+
+ - Common optional variables (used by the scripts):
+	 - `TAPIS_BASE_URL` (default: https://tacc.tapis.io)
+	 - `TAPIS_APP_VERSION`
+	 - `TAPIS_JOB_TIMEOUT_SECONDS` (default: 300)
+	 - `TAPIS_POLL_INTERVAL_SECONDS` (default: 5)
+	 - `STAMPEDE_PARTITION` (forwarded to the remote job)
+	 - `STAMPEDE_ACCOUNT` (forwarded to the remote job)
+
+Tapis app contract
+ - The Tapis app invoked by `assignment.sh` should honor the
+	 `FIB_SOURCE_B64` and `FIB_INPUT` environment variables, decode the
+	 source, compile and run the program, and write the two log lines
+	 described above (`fib_output=` and `elapsed=`). `assignment.sh`
+	 expects those lines to compute correctness and performance.
+
+Files
+ - README                 This file
+ - driver.sh              Top-level autograder wrapper (sources helpers)
+ - assignment.sh          Assignment-specific grading + submission logic
+ - tapis.sh               Tapis API helpers (token, API calls, parsing)
+ - run_fib.slurm          Remote job script executed on Stampede
+ - fib.c                  Your solution (edit this)

@@ -1,5 +1,28 @@
+---
+title: OpenCilk Autolab Autograder Guide
+description: A guide for configuring Autolab and Tapis-based autograding for OpenCilk Cilk programs.
+theme: minima
+---
+
 # OpenCilk Autolab Autograder Guide
 A repo dedicated to providing a Guide for configuring Autolab for autograding Cilk Programs
+
+## Jekyll site setup
+
+This repository now includes the minimal files needed for GitHub Pages / Jekyll:
+
+- `_config.yml` for the site metadata and theme
+- `Gemfile` for local builds with Bundler
+- YAML front matter at the top of this `README.md` so GitHub Pages can render it as the home page
+
+To preview the site locally, install Ruby, Bundler, and Jekyll, then run:
+
+```bash
+bundle install
+bundle exec jekyll serve
+```
+
+After that, open `http://127.0.0.1:4000` in your browser.
 
 # Setting up OpenCilk Autograder for Autolab
 
@@ -151,4 +174,19 @@ bash ./local-submit.sh
 TAPIS_APP_ID='fibonacci-fork-app' TAPIS_APP_VERSION='1.0.1' FIB_INPUT='20' bash ./local-submit.sh
 ```
 
+# Autograding Assignments from Stampede
+Now that you have stampede3 setup to recieve autograding submissions all thats left is to package an assignment that works around autolab to submits jobs to stampede3. A sample Autolab Assessment is provided for you here: [Fibonacci](https://github.com/araiyan/OpenCilk-Autolab-Autograder-Guide/tree/main/Fib%20-%20Stampede/fib-handout)
 
+### Setting up Sample Fib Assessment
+Once you have downloaded the sample assessment first make a copy of the env.example by running this command:
+```cp .env.example .env```
+
+Afterwords add your TACC Username, password, the Tapis APP ID you previously registered and the correct app version for this app.
+If your unsure what apps you have currently in your system referer back to Tapis_Stampede_Registration folder and run the check_register_app.py to find all your currently registered apps under your account.  
+Once you've set up the environment varibles zip your fib-handout folder into tar and name it **autograde.tar** Note: the name here is important because Tango autograder is set up to accept a compressed file with this exact name.  
+You should be fimiliar with Autolab assessment creation at this point. Follow the previous steps in this guide to create a new Assessment, name it whatever you like and when your setting up the autograder in the autograding step of the guide simply replace the older autograde.tar files with this new one.  
+Thats it! You should be all setup to autograde this cilk program now. We have provided with a sample solution here: [fib.c](https://github.com/araiyan/OpenCilk-Autolab-Autograder-Guide/blob/main/Fib%20-%20Stampede/fib.c)  
+Once you submit the assessment you should see a score for the assessment. If you want to also see a performance scoring for your assessment go back to Autolab -> autograder and add another scoring section and name it *Performance* and you should also see a performance scoring for your future assessments!
+
+### Debugging
+If your seeing an error in your autograder at this point and it keeps giving you 0 score, click on the log message that pops up at the middle top of Autolab whenever you submit an assignment, it should lead you to the autograding logs and help you see where its failing. Feel free to reach out to us if your having trouble solving any issues!
