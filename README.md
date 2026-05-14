@@ -1,5 +1,5 @@
 ---
-title: OpenCilk Autolab Autograder Guide
+title: OpenCilk Autograder
 description: A guide for configuring Autolab and Tapis-based autograding for OpenCilk Cilk programs.
 theme: minima
 ---
